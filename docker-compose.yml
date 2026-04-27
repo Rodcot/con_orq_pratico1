@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secretpass
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    environment:
+      FLASK_DB_TYPE: postgres
+      FLASK_DB_USER: postgres
+      FLASK_DB_NAME: postgres
+      FLASK_DB_PASSWORD: secretpass
+      FLASK_DB_HOST: db
+      FLASK_DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    deploy:
+      replicas: 2
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
